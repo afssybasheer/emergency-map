@@ -5,559 +5,392 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Emergency Corridor System — Live Map</title>
 
-<!-- Leaflet CSS — OpenStreetMap library, free, no API key -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap"/>
 
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
 
-:root {
-  --red:    #ff2d2d;
-  --blue:   #1e90ff;
-  --green:  #00e676;
-  --orange: #ff9100;
-  --dark:   #0a0e1a;
-  --card:   rgba(255,255,255,0.04);
-  --border: rgba(255,255,255,0.08);
-  --mono:   'Share Tech Mono', monospace;
-  --sans:   'Rajdhani', sans-serif;
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
 }
 
-html, body {
-  height: 100%;
-  background: var(--dark);
-  color: #fff;
-  font-family: var(--sans);
-  overflow: hidden;
+:root{
+  --red:#ff2d2d;
+  --blue:#1e90ff;
+  --green:#00e676;
+  --orange:#ff9100;
+  --dark:#0a0e1a;
+  --card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08);
+  --mono:'Share Tech Mono', monospace;
+  --sans:'Rajdhani', sans-serif;
 }
 
-/* ── HEADER ── */
-#header {
-  position: fixed; top:0; left:0; right:0; z-index:2000;
-  height: 52px;
-  background: rgba(10,14,26,0.96);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 16px;
-}
-.logo {
-  display: flex; align-items: center; gap: 10px;
-  font-family: var(--sans); font-weight: 700; font-size: 15px;
-  letter-spacing: 1px; color: #fff;
-}
-.pulse-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 0 0 rgba(0,230,118,0.6);
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%   { box-shadow: 0 0 0 0   rgba(0,230,118,0.6); }
-  70%  { box-shadow: 0 0 0 10px rgba(0,230,118,0); }
-  100% { box-shadow: 0 0 0 0   rgba(0,230,118,0); }
-}
-#emergencyBadge {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
-  padding: 4px 14px; border-radius: 4px;
-  background: rgba(255,45,45,0.12);
-  border: 1px solid rgba(255,45,45,0.3);
-  color: var(--red); transition: all 0.3s;
-}
-#emergencyBadge.active {
-  background: rgba(255,45,45,0.3);
-  border-color: var(--red);
-  animation: flashBadge 1s infinite;
-}
-@keyframes flashBadge {
-  0%,100% { opacity:1; } 50% { opacity:0.4; }
+html,body{
+  height:100%;
+  background:var(--dark);
+  color:#fff;
+  font-family:var(--sans);
+  overflow:hidden;
 }
 
-/* ── MAP ── */
-#map {
-  position: fixed;
-  top: 52px; left: 0; right: 280px; bottom: 0;
-  z-index: 1;
+#header{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:52px;
+  z-index:2000;
+  background:rgba(10,14,26,0.96);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 16px;
 }
 
-/* Override Leaflet dark theme */
-.leaflet-container {
-  background: #0d1225 !important;
-  font-family: var(--sans) !important;
-}
-.leaflet-tile {
-  filter: brightness(0.85) saturate(0.7) hue-rotate(180deg) invert(1);
-}
-
-/* ── SIDEBAR ── */
-#sidebar {
-  position: fixed;
-  top: 52px; right: 0; bottom: 0; width: 280px;
-  background: rgba(10,14,26,0.97);
-  border-left: 1px solid var(--border);
-  overflow-y: auto; padding: 12px;
-  display: flex; flex-direction: column; gap: 10px;
-  z-index: 1000;
-}
-.section-title {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
-  color: rgba(255,255,255,0.3); text-transform: uppercase;
-  padding: 4px 0; border-bottom: 1px solid var(--border);
-  margin-bottom: 2px;
-}
-.ambu-card {
-  background: var(--card);
-  border: 1px solid rgba(255,45,45,0.2);
-  border-radius: 8px; padding: 12px;
-}
-.ambu-card .alabel {
-  font-family: var(--mono); font-size: 10px;
-  color: var(--red); letter-spacing: 1.5px; margin-bottom: 8px;
-}
-.ambu-card .coords {
-  font-family: var(--mono); font-size: 11px;
-  color: rgba(255,255,255,0.6); line-height: 2;
-}
-.ambu-card .coords span { color: #fff; font-weight: 600; }
-
-.pole-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px;
-  transition: border-color 0.3s, background 0.3s;
-}
-.pole-card.siren-on {
-  border-color: var(--orange);
-  background: rgba(255,145,0,0.06);
-}
-.pole-header {
-  display: flex; align-items: center;
-  justify-content: space-between; margin-bottom: 8px;
-}
-.pole-name { font-weight: 700; font-size: 14px; color: #fff; }
-.siren-badge {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 1px;
-  padding: 3px 8px; border-radius: 3px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--border);
-  color: rgba(255,255,255,0.3);
-  transition: all 0.3s;
-}
-.siren-badge.on {
-  background: rgba(255,145,0,0.2);
-  border-color: var(--orange); color: var(--orange);
-  animation: flashBadge 0.8s infinite;
-}
-.pole-dist {
-  font-family: var(--mono); font-size: 11px;
-  color: rgba(255,255,255,0.4);
-}
-.pole-dist span { color: var(--blue); font-size: 13px; font-weight: 600; }
-.dist-bar-wrap {
-  margin-top: 8px; height: 3px;
-  background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden;
-}
-.dist-bar {
-  height: 100%; border-radius: 2px;
-  background: var(--blue); transition: width 1.5s ease, background 0.3s;
-}
-.stat-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 7px 0; border-bottom: 1px solid var(--border);
-  font-size: 12px; color: rgba(255,255,255,0.4);
-}
-.stat-row:last-child { border-bottom: none; }
-.stat-val { font-family: var(--mono); color: #fff; font-size: 12px; }
-#sidebar::-webkit-scrollbar { width: 4px; }
-#sidebar::-webkit-scrollbar-track { background: transparent; }
-#sidebar::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1); border-radius: 2px;
+.logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:700;
+  letter-spacing:1px;
 }
 
-/* ── CUSTOM LEAFLET MARKERS ── */
-.ambu-marker {
-  background: var(--red);
-  border: 2px solid #fff;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  width: 24px; height: 24px;
-  box-shadow: 0 2px 8px rgba(255,45,45,0.6);
+.pulse-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--green);
 }
-.pole-marker-blue {
-  background: var(--blue);
-  border: 2px solid #fff;
-  border-radius: 50%;
-  width: 18px; height: 18px;
-  box-shadow: 0 2px 8px rgba(30,144,255,0.5);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 700; font-size: 10px;
+
+#emergencyBadge{
+  font-family:var(--mono);
+  font-size:11px;
+  padding:4px 14px;
+  border-radius:4px;
+  background:rgba(255,45,45,0.12);
+  border:1px solid rgba(255,45,45,0.3);
+  color:var(--red);
 }
-.pole-marker-orange {
-  background: var(--orange);
-  border: 2px solid #fff;
-  border-radius: 50%;
-  width: 22px; height: 22px;
-  box-shadow: 0 0 12px rgba(255,145,0,0.8);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 700; font-size: 11px;
-  animation: flashBadge 0.6s infinite;
+
+#map{
+  position:fixed;
+  top:52px;
+  left:0;
+  right:280px;
+  bottom:0;
 }
-.leaflet-popup-content-wrapper {
-  background: #0d1225 !important;
-  border: 1px solid rgba(30,144,255,0.3) !important;
-  color: #fff !important; border-radius: 8px !important;
+
+.leaflet-tile{
+  filter:brightness(0.85) saturate(0.7) hue-rotate(180deg) invert(1);
 }
-.leaflet-popup-tip { background: #0d1225 !important; }
-.popup-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
-.popup-sub { font-size: 11px; color: rgba(255,255,255,0.5); line-height: 1.8; }
-.popup-dist { font-size: 13px; color: var(--blue); font-weight: 600; margin-top: 4px; }
+
+#sidebar{
+  position:fixed;
+  top:52px;
+  right:0;
+  bottom:0;
+  width:280px;
+  background:rgba(10,14,26,0.97);
+  border-left:1px solid var(--border);
+  overflow-y:auto;
+  padding:12px;
+}
+
+.section-title{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:2px;
+  color:rgba(255,255,255,0.3);
+  margin-bottom:8px;
+}
+
+.ambu-card,
+.pole-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:12px;
+  margin-bottom:10px;
+}
+
+.pole-card.siren-on{
+  border-color:var(--orange);
+  background:rgba(255,145,0,0.08);
+}
+
+.pole-header{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+}
+
+.siren-badge{
+  font-size:10px;
+  color:#aaa;
+}
+
+.siren-badge.on{
+  color:var(--orange);
+}
+
+.stat-row{
+  display:flex;
+  justify-content:space-between;
+  margin:8px 0;
+  font-size:12px;
+}
+
+.dist-bar-wrap{
+  margin-top:8px;
+  height:4px;
+  background:#222;
+  border-radius:2px;
+  overflow:hidden;
+}
+
+.dist-bar{
+  height:100%;
+  width:0%;
+  background:var(--blue);
+}
+
 </style>
 </head>
+
 <body>
 
-<!-- HEADER -->
 <div id="header">
   <div class="logo">
     <div class="pulse-dot"></div>
     EMERGENCY CORRIDOR SYSTEM
   </div>
-  <div id="emergencyBadge">● STANDBY</div>
+
+  <div id="emergencyBadge">
+    🚨 EMERGENCY ACTIVE
+  </div>
 </div>
 
-<!-- MAP -->
 <div id="map"></div>
 
-<!-- SIDEBAR -->
 <div id="sidebar">
 
-  <div class="section-title">Ambulance</div>
+  <div class="section-title">AMBULANCE</div>
+
   <div class="ambu-card">
-    <div class="alabel">🚑 LIVE LOCATION</div>
-    <div class="coords">
-      LAT &nbsp;&nbsp;<span id="aLat">—</span><br>
-      LNG &nbsp;&nbsp;<span id="aLng">—</span><br>
-      SPEED <span id="aSpeed">—</span> km/h
+    <div>🚑 LIVE LOCATION</div>
+    <br>
+
+    LAT :
+    <span id="aLat">--</span>
+    <br><br>
+
+    LNG :
+    <span id="aLng">--</span>
+    <br><br>
+
+    SPEED :
+    <span id="aSpeed">40</span> km/h
+  </div>
+
+  <div class="section-title">POLE STATUS</div>
+
+  <div class="pole-card siren-on" id="pCard1">
+    <div class="pole-header">
+      <div>📍 Pole 1</div>
+      <div class="siren-badge on">🔊 ON</div>
+    </div>
+
+    Distance:
+    <span id="dist1">85</span> m
+
+    <div class="dist-bar-wrap">
+      <div class="dist-bar" id="bar1" style="width:85%; background:#ff9100;"></div>
     </div>
   </div>
 
-  <div class="section-title">Pole Status</div>
-
-  <div class="pole-card" id="pCard1">
+  <div class="pole-card siren-on" id="pCard2">
     <div class="pole-header">
-      <div class="pole-name">📍 Pole 1</div>
-      <div class="siren-badge" id="sBadge1">SILENT</div>
+      <div>📍 Pole 2</div>
+      <div class="siren-badge on">🔊 ON</div>
     </div>
-    <div class="pole-dist">Distance: <span id="dist1">—</span> m</div>
-    <div class="dist-bar-wrap"><div class="dist-bar" id="bar1" style="width:0%"></div></div>
-  </div>
 
-  <div class="pole-card" id="pCard2">
-    <div class="pole-header">
-      <div class="pole-name">📍 Pole 2</div>
-      <div class="siren-badge" id="sBadge2">SILENT</div>
+    Distance:
+    <span id="dist2">150</span> m
+
+    <div class="dist-bar-wrap">
+      <div class="dist-bar" id="bar2" style="width:60%; background:#ff9100;"></div>
     </div>
-    <div class="pole-dist">Distance: <span id="dist2">—</span> m</div>
-    <div class="dist-bar-wrap"><div class="dist-bar" id="bar2" style="width:0%"></div></div>
   </div>
 
   <div class="pole-card" id="pCard3">
     <div class="pole-header">
-      <div class="pole-name">📍 Pole 3</div>
-      <div class="siren-badge" id="sBadge3">SILENT</div>
+      <div>📍 Pole 3</div>
+      <div class="siren-badge">SILENT</div>
     </div>
-    <div class="pole-dist">Distance: <span id="dist3">—</span> m</div>
-    <div class="dist-bar-wrap"><div class="dist-bar" id="bar3" style="width:0%"></div></div>
+
+    Distance:
+    <span id="dist3">420</span> m
+
+    <div class="dist-bar-wrap">
+      <div class="dist-bar" id="bar3" style="width:20%;"></div>
+    </div>
   </div>
 
-  <div class="section-title">System Info</div>
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px">
-    <div class="stat-row"><span>Last update</span><span class="stat-val" id="lastUpdate">—</span></div>
-    <div class="stat-row"><span>Trigger radius</span><span class="stat-val">100 m</span></div>
-    <div class="stat-row"><span>Active sirens</span><span class="stat-val" id="activePoles">0 / 3</span></div>
-    <div class="stat-row"><span>Emergency</span><span class="stat-val" id="emergStatus" style="color:var(--green)">STANDBY</span></div>
-    <div class="stat-row"><span>Map</span><span class="stat-val" style="color:var(--green)">● OpenStreetMap</span></div>
+  <div class="section-title">SYSTEM INFO</div>
+
+  <div class="ambu-card">
+
+    <div class="stat-row">
+      <span>Trigger Radius</span>
+      <span>300 m</span>
+    </div>
+
+    <div class="stat-row">
+      <span>Active Sirens</span>
+      <span>2 / 3</span>
+    </div>
+
+    <div class="stat-row">
+      <span>Emergency</span>
+      <span style="color:red;">ACTIVE</span>
+    </div>
+
   </div>
 
 </div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-// ═══════════════════════════════════════════════════════
-//  CONFIGURATION — paste your Blynk Auth Token below
-// ═══════════════════════════════════════════════════════
-const BLYNK_TOKEN  = "oXfBxr0og5eToyPAsXhBoGhdsqmBePbR";
-const BLYNK_SERVER = "https://blynk.cloud/external/api";
-const POLL_MS      = 2000; // poll every 2 seconds
 
-// Fixed pole GPS coordinates — matches your .ino files
+// MAP CENTER
+const map = L.map('map',{
+  center:[9.982500,76.279000],
+  zoom:15
+});
+
+// TILE LAYER
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+  attribution:'© OpenStreetMap contributors'
+}).addTo(map);
+
+// POLES
 const POLES = [
-  { id:1, name:"Pole 1 — Oushadhi Jn",  lat:10.117323, lng:76.475925 },
-  { id:2, name:"Pole 2 — Signal Jn",     lat:10.114586, lng:76.478328 },
-  { id:3, name:"Pole 3 — Main Jn",       lat:10.113504, lng:76.478404 },
+
+{
+  id:1,
+  name:"Pole 1 — Menaka",
+  lat:9.981700,
+  lng:76.276500
+},
+
+{
+  id:2,
+  name:"Pole 2 — Marine Drive",
+  lat:9.978900,
+  lng:76.280800
+},
+
+{
+  id:3,
+  name:"Pole 3 — High Court",
+  lat:9.986400,
+  lng:76.281900
+}
+
 ];
 
-// ═══════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════
-let ambulanceMarker = null;
-let ambulancePath   = null;
-let pathPoints      = [];
-let prevPos         = null;
-let sirenState      = [false, false, false];
-let poleMarkers     = [];
-let poleCircles     = [];
-let emergencyOn     = false;
+// CREATE POLE MARKERS
+POLES.forEach((pole,index)=>{
 
-// ═══════════════════════════════════════════════════════
-//  HAVERSINE
-// ═══════════════════════════════════════════════════════
-function haversine(lat1,lon1,lat2,lon2){
-  const R=6371000, r=Math.PI/180;
-  const dL=(lat2-lat1)*r, dO=(lon2-lon1)*r;
-  const a=Math.sin(dL/2)**2+Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dO/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
+  // MARKER
+  const marker = L.marker([pole.lat,pole.lng])
+  .addTo(map)
+  .bindPopup(pole.name);
 
-// ═══════════════════════════════════════════════════════
-//  INIT MAP
-// ═══════════════════════════════════════════════════════
-const map = L.map('map', {
-  center: [10.115, 76.477],
-  zoom: 15,
-  zoomControl: true,
-  attributionControl: true,
-});
+  // RADIUS CIRCLE
+  L.circle([pole.lat,pole.lng],{
 
-// OpenStreetMap tile layer — completely free, no API key
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
-  maxZoom: 19,
-}).addTo(map);
+    radius:300,
+    color:index < 2 ? '#ff9100' : '#1e90ff',
+    fillColor:index < 2 ? '#ff9100' : '#1e90ff',
+    fillOpacity:0.15
 
-// ─── Pole markers ───────────────────────────────────────
-POLES.forEach((pole, i) => {
-  const icon = L.divIcon({
-    className: '',
-    html: `<div class="pole-marker-blue">${pole.id}</div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-    popupAnchor: [0, -12],
-  });
-
-  const marker = L.marker([pole.lat, pole.lng], { icon })
-    .addTo(map)
-    .bindPopup(`
-      <div class="popup-title">📍 ${pole.name}</div>
-      <div class="popup-sub">
-        Lat: ${pole.lat.toFixed(6)}<br>
-        Lng: ${pole.lng.toFixed(6)}
-      </div>
-      <div class="popup-dist" id="popup-dist-${pole.id}">Calculating...</div>
-    `);
-
-  // 100m trigger circle
-  const circle = L.circle([pole.lat, pole.lng], {
-    radius: 100,
-    color: '#1e90ff',
-    fillColor: '#1e90ff',
-    fillOpacity: 0.06,
-    weight: 1.5,
-    dashArray: '5 5',
   }).addTo(map);
 
-  poleMarkers.push(marker);
-  poleCircles.push(circle);
 });
 
-// ─── Ambulance path polyline ────────────────────────────
-ambulancePath = L.polyline([], {
-  color: '#ff2d2d',
-  weight: 3,
-  opacity: 0.8,
+// AMBULANCE LOCATION
+const ambulanceLat = 9.981500;
+const ambulanceLng = 76.278000;
+
+// UPDATE SIDEBAR
+document.getElementById('aLat').innerHTML =
+ambulanceLat.toFixed(6);
+
+document.getElementById('aLng').innerHTML =
+ambulanceLng.toFixed(6);
+
+// AMBULANCE MARKER
+const ambulanceIcon = L.divIcon({
+
+  html:`
+  <div style="
+    background:red;
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:2px solid white;
+    font-size:12px;
+    box-shadow:0 0 15px red;
+  ">
+  🚑
+  </div>
+  `,
+
+  className:'',
+  iconSize:[22,22]
+
+});
+
+// ADD AMBULANCE
+const ambulanceMarker = L.marker(
+[ambulanceLat,ambulanceLng],
+{
+  icon:ambulanceIcon
+})
+.addTo(map)
+.bindPopup("🚑 Ambulance");
+
+// PATH
+const route = [
+
+[9.981500,76.278000],
+[9.980500,76.279500],
+[9.979500,76.280500],
+[9.978900,76.280800]
+
+];
+
+// ROUTE LINE
+L.polyline(route,{
+
+  color:'red',
+  weight:4,
+  opacity:0.8
+
 }).addTo(map);
 
-// ─── Ambulance marker ───────────────────────────────────
-const ambuIcon = L.divIcon({
-  className: '',
-  html: `<div style="
-    background:#ff2d2d;border:2px solid #fff;border-radius:50%;
-    width:20px;height:20px;
-    box-shadow:0 0 12px rgba(255,45,45,0.8);
-    display:flex;align-items:center;justify-content:center;
-    font-size:11px;
-  ">🚑</div>`,
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-});
-
-// ═══════════════════════════════════════════════════════
-//  FETCH BLYNK DATA
-// ═══════════════════════════════════════════════════════
-async function fetchBlynk() {
-  try {
-    const [rLoc, rEmerg, rS1, rS2, rS3] = await Promise.all([
-      fetch(`${BLYNK_SERVER}/get?token=${BLYNK_TOKEN}&pin=V5`),
-      fetch(`${BLYNK_SERVER}/get?token=${BLYNK_TOKEN}&pin=V10`),
-      fetch(`${BLYNK_SERVER}/get?token=${BLYNK_TOKEN}&pin=V2`),
-      fetch(`${BLYNK_SERVER}/get?token=${BLYNK_TOKEN}&pin=V3`),
-      fetch(`${BLYNK_SERVER}/get?token=${BLYNK_TOKEN}&pin=V4`),
-    ]);
-
-    const loc   = await rLoc.json();
-    const emerg = await rEmerg.json();
-    const s1    = await rS1.json();
-    const s2    = await rS2.json();
-    const s3    = await rS3.json();
-
-    // Emergency status
-    emergencyOn = parseInt(emerg[0]) === 1;
-    updateEmergencyUI(emergencyOn);
-
-    // Siren states
-    updateSiren(0, parseInt(s1[0]) === 1);
-    updateSiren(1, parseInt(s2[0]) === 1);
-    updateSiren(2, parseInt(s3[0]) === 1);
-
-    // Ambulance location — Blynk V5 Location pin sends LON first, LAT second
-    // Confirmed from Blynk datastream settings: "DEFAULT COORDINATES (LON/LAT)"
-    if (loc && loc.length >= 2) {
-      const lng = parseFloat(loc[0]); // index 0 = LONGITUDE
-      const lat = parseFloat(loc[1]); // index 1 = LATITUDE
-      if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-        updateAmbulance(lat, lng);
-      }
-    }
-
-    // Timestamp
-    document.getElementById('lastUpdate').textContent =
-      new Date().toLocaleTimeString('en-IN', { hour12: false });
-
-  } catch(e) {
-    console.warn('Blynk fetch error:', e.message);
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-//  UPDATE AMBULANCE
-// ═══════════════════════════════════════════════════════
-function updateAmbulance(lat, lng) {
-  const pos = [lat, lng];
-
-  // Create or move marker
-  if (!ambulanceMarker) {
-    ambulanceMarker = L.marker(pos, { icon: ambuIcon, zIndexOffset: 1000 })
-      .addTo(map)
-      .bindPopup('<div class="popup-title">🚑 Ambulance</div><div class="popup-sub">Live tracking active</div>');
-  } else {
-    ambulanceMarker.setLatLng(pos);
-  }
-
-  // Update trail
-  pathPoints.push(pos);
-  if (pathPoints.length > 300) pathPoints.shift();
-  ambulancePath.setLatLngs(pathPoints);
-
-  // Pan map if emergency on
-  if (emergencyOn) map.panTo(pos, { animate: true, duration: 1 });
-
-  // Update sidebar
-  document.getElementById('aLat').textContent = lat.toFixed(6);
-  document.getElementById('aLng').textContent = lng.toFixed(6);
-
-  // Speed calculation
-  if (prevPos) {
-    const d = haversine(prevPos[0], prevPos[1], lat, lng);
-    const spd = (d / (POLL_MS / 1000)) * 3.6;
-    document.getElementById('aSpeed').textContent = spd.toFixed(1);
-  }
-  prevPos = pos;
-
-  // Update distances to each pole
-  let active = 0;
-  POLES.forEach((pole, i) => {
-    const dist = haversine(lat, lng, pole.lat, pole.lng);
-    updatePoleDistance(i, dist);
-
-    // Update popup distance
-    const el = document.getElementById(`popup-dist-${pole.id}`);
-    if (el) el.textContent = Math.round(dist) + ' m away';
-
-    if (sirenState[i]) active++;
-  });
-  document.getElementById('activePoles').textContent = active + ' / 3';
-}
-
-// ═══════════════════════════════════════════════════════
-//  UPDATE POLE DISTANCE BAR
-// ═══════════════════════════════════════════════════════
-function updatePoleDistance(i, dist) {
-  document.getElementById(`dist${i+1}`).textContent = Math.round(dist);
-  const pct = Math.max(0, Math.min(100, (1 - dist / 500) * 100));
-  const bar = document.getElementById(`bar${i+1}`);
-  bar.style.width = pct + '%';
-  bar.style.background = dist <= 100 ? '#ff9100' : '#1e90ff';
-}
-
-// ═══════════════════════════════════════════════════════
-//  UPDATE SIREN STATE
-// ═══════════════════════════════════════════════════════
-function updateSiren(i, isOn) {
-  sirenState[i] = isOn;
-  const card   = document.getElementById(`pCard${i+1}`);
-  const badge  = document.getElementById(`sBadge${i+1}`);
-  const circle = poleCircles[i];
-  const marker = poleMarkers[i];
-
-  if (isOn) {
-    card.classList.add('siren-on');
-    badge.classList.add('on');
-    badge.textContent = '🔊 SIREN ON';
-    circle.setStyle({ color:'#ff9100', fillColor:'#ff9100', fillOpacity:0.15, weight:2 });
-    marker.setIcon(L.divIcon({
-      className: '',
-      html: `<div class="pole-marker-orange">${i+1}</div>`,
-      iconSize: [22, 22], iconAnchor: [11, 11],
-    }));
-  } else {
-    card.classList.remove('siren-on');
-    badge.classList.remove('on');
-    badge.textContent = 'SILENT';
-    circle.setStyle({ color:'#1e90ff', fillColor:'#1e90ff', fillOpacity:0.06, weight:1.5 });
-    marker.setIcon(L.divIcon({
-      className: '',
-      html: `<div class="pole-marker-blue">${i+1}</div>`,
-      iconSize: [18, 18], iconAnchor: [9, 9],
-    }));
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-//  UPDATE EMERGENCY UI
-// ═══════════════════════════════════════════════════════
-function updateEmergencyUI(on) {
-  const badge  = document.getElementById('emergencyBadge');
-  const status = document.getElementById('emergStatus');
-  if (on) {
-    badge.textContent = '🚨 EMERGENCY ACTIVE';
-    badge.classList.add('active');
-    status.textContent = 'ACTIVE';
-    status.style.color = 'var(--red)';
-  } else {
-    badge.textContent = '● STANDBY';
-    badge.classList.remove('active');
-    status.textContent = 'STANDBY';
-    status.style.color = 'var(--green)';
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-//  START POLLING
-// ═══════════════════════════════════════════════════════
-fetchBlynk();
-setInterval(fetchBlynk, POLL_MS);
 </script>
+
 </body>
 </html>
