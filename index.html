@@ -288,7 +288,7 @@ html, body {
 // ═══════════════════════════════════════════════════════
 //  CONFIGURATION — paste your Blynk Auth Token below
 // ═══════════════════════════════════════════════════════
-const BLYNK_TOKEN  = "oXfBxr0og5eToyPAsXhBoGhdsqmBePbR"; // ← CHANGE THIS
+const BLYNK_TOKEN  = "oXfBxr0og5eToyPAsXhBoGhdsqmBePbR";
 const BLYNK_SERVER = "https://blynk.cloud/external/api";
 const POLL_MS      = 2000; // poll every 2 seconds
 
@@ -421,10 +421,11 @@ async function fetchBlynk() {
     updateSiren(1, parseInt(s2[0]) === 1);
     updateSiren(2, parseInt(s3[0]) === 1);
 
-    // Ambulance location — V5 Location type returns [lat, lng]
+    // Ambulance location — Blynk V5 Location pin sends LON first, LAT second
+    // Confirmed from Blynk datastream settings: "DEFAULT COORDINATES (LON/LAT)"
     if (loc && loc.length >= 2) {
-      const lat = parseFloat(loc[0]);
-      const lng = parseFloat(loc[1]);
+      const lng = parseFloat(loc[0]); // index 0 = LONGITUDE
+      const lat = parseFloat(loc[1]); // index 1 = LATITUDE
       if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
         updateAmbulance(lat, lng);
       }
