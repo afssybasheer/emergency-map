@@ -1,80 +1,69 @@
-```html id="7pq5xg"
+# Google Maps Emergency Corridor System (Live Dynamic Version)
+
+```html
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Emergency Corridor System</title>
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 
 body{
   margin:0;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
   background:#0a0e1a;
   color:white;
 }
 
 #map{
   height:100vh;
-  width:calc(100% - 300px);
+  width:calc(100% - 320px);
 }
 
 #sidebar{
-
   position:fixed;
   top:0;
   right:0;
-  width:300px;
+  width:320px;
   height:100%;
   background:#111827;
-  padding:15px;
   overflow:auto;
-
+  padding:15px;
+  box-sizing:border-box;
 }
 
 .card{
-
   background:#1f2937;
-  padding:12px;
-  margin-bottom:12px;
-  border-radius:10px;
-
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:15px;
+  box-shadow:0 0 10px rgba(0,0,0,0.3);
 }
 
 .title{
-
-  font-size:13px;
   color:#9ca3af;
+  font-size:13px;
   margin-bottom:10px;
-
+  letter-spacing:1px;
 }
 
 .active{
-
   color:#ff9100;
   font-weight:bold;
-
 }
 
 .silent{
-
   color:#9ca3af;
+}
 
+#status{
+  font-weight:bold;
 }
 
 </style>
-
 </head>
-
 <body>
 
 <div id="map"></div>
@@ -82,64 +71,42 @@ body{
 <div id="sidebar">
 
 <div class="card">
+  <div class="title">🚑 AMBULANCE STATUS</div>
 
-<div class="title">🚑 AMBULANCE</div>
+  LAT : <span id="lat">--</span>
+  <br><br>
 
-LAT :
-<span id="lat">--</span>
+  LNG : <span id="lng">--</span>
+  <br><br>
 
-<br><br>
-
-LNG :
-<span id="lng">--</span>
-
-<br><br>
-
-STATUS :
-<span id="status">STANDBY</span>
-
+  STATUS : <span id="status">STANDBY</span>
 </div>
 
 <div class="card">
+  <div class="title">📍 POLE 1 — MENAKA</div>
 
-<div class="title">📍 POLE 1 — MENAKA</div>
+  Distance : <span id="d1">--</span> m
+  <br><br>
 
-Distance :
-<span id="d1">--</span> m
-
-<br><br>
-
-SIREN :
-<span id="s1" class="silent">SILENT</span>
-
+  Siren : <span id="s1" class="silent">SILENT</span>
 </div>
 
 <div class="card">
+  <div class="title">📍 POLE 2 — MARINE DRIVE</div>
 
-<div class="title">📍 POLE 2 — MARINE DRIVE</div>
+  Distance : <span id="d2">--</span> m
+  <br><br>
 
-Distance :
-<span id="d2">--</span> m
-
-<br><br>
-
-SIREN :
-<span id="s2" class="silent">SILENT</span>
-
+  Siren : <span id="s2" class="silent">SILENT</span>
 </div>
 
 <div class="card">
+  <div class="title">📍 POLE 3 — HIGH COURT</div>
 
-<div class="title">📍 POLE 3 — HIGH COURT</div>
+  Distance : <span id="d3">--</span> m
+  <br><br>
 
-Distance :
-<span id="d3">--</span> m
-
-<br><br>
-
-SIREN :
-<span id="s3" class="silent">SILENT</span>
-
+  Siren : <span id="s3" class="silent">SILENT</span>
 </div>
 
 </div>
@@ -147,14 +114,20 @@ SIREN :
 <script>
 
 // ======================================================
+// GOOGLE MAP
+// ======================================================
+
+let map;
+let ambulanceMarker;
+let routePath;
+let pathCoordinates = [];
+
+// ======================================================
 // BLYNK CONFIG
 // ======================================================
 
-const BLYNK_TOKEN =
-"oXfBxr0og5eToyPAsXhBoGhdsqmBePbR";
-
-const SERVER =
-"https://blynk.cloud/external/api";
+const BLYNK_TOKEN = "oXfBxr0og5eToyPAsXhBoGhdsqmBePbR";
+const SERVER = "https://blynk.cloud/external/api";
 
 // ======================================================
 // POLE LOCATIONS
@@ -163,117 +136,140 @@ const SERVER =
 const POLES = [
 
 {
-id:1,
-name:"Menaka",
-lat:9.981700,
-lng:76.276500
+  id:1,
+  name:"Menaka",
+  lat:9.981700,
+  lng:76.276500
 },
 
 {
-id:2,
-name:"Marine Drive",
-lat:9.978900,
-lng:76.280800
+  id:2,
+  name:"Marine Drive",
+  lat:9.978900,
+  lng:76.280800
 },
 
 {
-id:3,
-name:"High Court",
-lat:9.986400,
-lng:76.281900
+  id:3,
+  name:"High Court",
+  lat:9.986400,
+  lng:76.281900
 }
 
 ];
 
 // ======================================================
-// MAP
+// INITIALIZE MAP
 // ======================================================
 
-const map = L.map('map').setView(
-[9.982500,76.279000],
-15
-);
+function initMap(){
 
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-attribution:'© OpenStreetMap'
+  map = new google.maps.Map(document.getElementById("map"), {
+
+    center:{
+      lat:9.982500,
+      lng:76.279000
+    },
+
+    zoom:15,
+
+    styles:[
+      {
+        "elementType":"geometry",
+        "stylers":[{"color":"#1d2c4d"}]
+      },
+      {
+        "elementType":"labels.text.fill",
+        "stylers":[{"color":"#8ec3b9"}]
+      },
+      {
+        "elementType":"labels.text.stroke",
+        "stylers":[{"color":"#1a3646"}]
+      }
+    ]
+
+  });
+
+  // ======================================================
+  // POLE MARKERS
+  // ======================================================
+
+  POLES.forEach((pole)=>{
+
+    new google.maps.Marker({
+
+      position:{
+        lat:pole.lat,
+        lng:pole.lng
+      },
+
+      map:map,
+      title:pole.name
+
+    });
+
+    // RADIUS CIRCLE
+
+    new google.maps.Circle({
+
+      strokeColor:"#1e90ff",
+      strokeOpacity:0.8,
+      strokeWeight:2,
+      fillColor:"#1e90ff",
+      fillOpacity:0.15,
+      map:map,
+      center:{
+        lat:pole.lat,
+        lng:pole.lng
+      },
+      radius:300
+
+    });
+
+  });
+
+  // ======================================================
+  // AMBULANCE MARKER
+  // ======================================================
+
+  ambulanceMarker = new google.maps.Marker({
+
+    position:{
+      lat:9.981500,
+      lng:76.278000
+    },
+
+    map:map,
+
+    icon:{
+      url:"https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+    },
+
+    title:"Ambulance"
+
+  });
+
+  // ROUTE PATH
+
+  routePath = new google.maps.Polyline({
+
+    path:pathCoordinates,
+    geodesic:true,
+    strokeColor:"#FF0000",
+    strokeOpacity:1.0,
+    strokeWeight:4
+
+  });
+
+  routePath.setMap(map);
+
+  // START LIVE DATA
+
+  fetchData();
+
+  setInterval(fetchData,2000);
+
 }
-).addTo(map);
-
-// ======================================================
-// POLE MARKERS
-// ======================================================
-
-const poleMarkers = [];
-
-POLES.forEach((pole)=>{
-
-const marker = L.marker(
-[pole.lat,pole.lng]
-)
-.addTo(map)
-.bindPopup(pole.name);
-
-poleMarkers.push(marker);
-
-// RADIUS
-
-L.circle(
-[pole.lat,pole.lng],
-{
-
-radius:300,
-color:'#1e90ff',
-fillColor:'#1e90ff',
-fillOpacity:0.1
-
-}
-).addTo(map);
-
-});
-
-// ======================================================
-// AMBULANCE MARKER
-// ======================================================
-
-const ambulanceIcon = L.divIcon({
-
-html:`
-<div style="
-background:red;
-width:22px;
-height:22px;
-border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-border:2px solid white;
-font-size:12px;
-box-shadow:0 0 15px red;
-">
-🚑
-</div>
-`,
-
-className:'',
-iconSize:[22,22]
-
-});
-
-let ambulanceMarker = L.marker(
-[9.981500,76.278000],
-{
-icon:ambulanceIcon
-}
-).addTo(map);
-
-let path = [];
-
-let polyline = L.polyline(path,{
-color:'red',
-weight:4
-}).addTo(map);
 
 // ======================================================
 // DISTANCE FUNCTION
@@ -281,194 +277,209 @@ weight:4
 
 function haversine(lat1,lon1,lat2,lon2){
 
-const R = 6371000;
+  const R = 6371000;
 
-const toRad = x => x * Math.PI / 180;
+  const toRad = x => x * Math.PI / 180;
 
-const dLat = toRad(lat2-lat1);
-const dLon = toRad(lon2-lon1);
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
 
-const a =
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2)
+    +
+    Math.cos(toRad(lat1))
+    *
+    Math.cos(toRad(lat2))
+    *
+    Math.sin(dLon/2)
+    *
+    Math.sin(dLon/2);
 
-Math.sin(dLat/2) * Math.sin(dLat/2)
+  const c = 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 
-+
-
-Math.cos(toRad(lat1)) *
-Math.cos(toRad(lat2)) *
-
-Math.sin(dLon/2) *
-Math.sin(dLon/2);
-
-const c = 2 * Math.atan2(
-Math.sqrt(a),
-Math.sqrt(1-a)
-);
-
-return R*c;
+  return R*c;
 
 }
 
 // ======================================================
-// UPDATE SIREN UI
+// UPDATE SIREN STATUS
 // ======================================================
 
 function updateSiren(id,on){
 
-const el = document.getElementById("s"+id);
+  const el = document.getElementById("s"+id);
 
-if(on){
+  if(on){
 
-el.innerHTML = "🔊 ACTIVE";
-el.className = "active";
+    el.innerHTML = "🔊 ACTIVE";
+    el.className = "active";
 
-}
-else{
+  }
+  else{
 
-el.innerHTML = "SILENT";
-el.className = "silent";
+    el.innerHTML = "SILENT";
+    el.className = "silent";
 
-}
+  }
 
 }
 
 // ======================================================
-// FETCH LIVE BLYNK DATA
+// FETCH LIVE DATA
 // ======================================================
 
 async function fetchData(){
 
-try{
+  try{
 
-// LOCATION
+    // GPS LOCATION
 
-const rLoc = await fetch(
+    const rLoc = await fetch(
+      `${SERVER}/get?token=${BLYNK_TOKEN}&pin=V5`
+    );
 
-`${SERVER}/get?token=${BLYNK_TOKEN}&pin=V5`
+    const loc = await rLoc.json();
 
-);
+    // EMERGENCY STATUS
 
-const loc = await rLoc.json();
+    const rEmergency = await fetch(
+      `${SERVER}/get?token=${BLYNK_TOKEN}&pin=V10`
+    );
 
-// EMERGENCY BUTTON
+    const emergency = await rEmergency.json();
 
-const rEmergency = await fetch(
+    const emergencyOn =
+      parseInt(emergency[0]) === 1;
 
-`${SERVER}/get?token=${BLYNK_TOKEN}&pin=V10`
+    // STATUS UPDATE
 
-);
+    document.getElementById("status").innerHTML =
+      emergencyOn
+      ?
+      "🚨 ACTIVE"
+      :
+      "STANDBY";
 
-const emergency = await rEmergency.json();
+    // ======================================================
+    // BLYNK FORMAT = LONGITUDE , LATITUDE
+    // ======================================================
 
-const emergencyOn =
-parseInt(emergency[0]) === 1;
+    const lng = parseFloat(loc[0]);
+    const lat = parseFloat(loc[1]);
 
-// STATUS
+    if(!isNaN(lat) && !isNaN(lng)){
 
-document.getElementById("status").innerHTML =
+      // UPDATE SIDEBAR
 
-emergencyOn
-?
-"🚨 ACTIVE"
-:
-"STANDBY";
+      document.getElementById("lat").innerHTML =
+        lat.toFixed(6);
 
-// ======================================================
-// GPS
-// ======================================================
+      document.getElementById("lng").innerHTML =
+        lng.toFixed(6);
 
-// BLYNK FORMAT:
-// LONGITUDE , LATITUDE
+      // MOVE MARKER
 
-const lng = parseFloat(loc[0]);
-const lat = parseFloat(loc[1]);
+      ambulanceMarker.setPosition({
+        lat:lat,
+        lng:lng
+      });
 
-if(
-!isNaN(lat)
-&&
-!isNaN(lng)
-){
+      // PAN MAP
 
-// UPDATE UI
+      map.panTo({
+        lat:lat,
+        lng:lng
+      });
 
-document.getElementById("lat").innerHTML =
-lat.toFixed(6);
+      // ROUTE TRACK
 
-document.getElementById("lng").innerHTML =
-lng.toFixed(6);
+      pathCoordinates.push({
+        lat:lat,
+        lng:lng
+      });
 
-// MOVE AMBULANCE
+      routePath.setPath(pathCoordinates);
 
-ambulanceMarker.setLatLng([lat,lng]);
+      // ======================================================
+      // DISTANCE CHECK
+      // ======================================================
 
-map.panTo([lat,lng]);
+      POLES.forEach((pole,index)=>{
 
-// ROUTE PATH
+        const dist = haversine(
+          lat,
+          lng,
+          pole.lat,
+          pole.lng
+        );
 
-path.push([lat,lng]);
+        document.getElementById(
+          "d"+(index+1)
+        ).innerHTML =
+          Math.round(dist);
 
-polyline.setLatLngs(path);
+        // SIREN ACTIVATION
 
-// ======================================================
-// DISTANCE CHECK
-// ======================================================
+        if(dist <= 300 && emergencyOn){
 
-POLES.forEach((pole,index)=>{
+          updateSiren(index+1,true);
 
-const dist = haversine(
+        }
+        else{
 
-lat,
-lng,
-pole.lat,
-pole.lng
+          updateSiren(index+1,false);
 
-);
+        }
 
-document.getElementById(
+      });
 
-"d"+(index+1)
+    }
 
-).innerHTML =
+  }
+  catch(err){
 
-Math.round(dist);
+    console.log(err);
 
-// SIREN AUTO ACTIVATION
-
-if(
-dist <= 300
-&&
-emergencyOn
-){
-
-updateSiren(index+1,true);
-
-}
-else{
-
-updateSiren(index+1,false);
-
-}
-
-});
-
-}
+  }
 
 }
-catch(err){
-console.log(err);
-}
-}
-// ======================================================
-// LIVE UPDATE
-// ======================================================
-
-fetchData();
-
-setInterval(fetchData,2000);
 
 </script>
 
-</body>
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBbdPXakLztZNDkU5160vGCPLBS9ZBajGU&callback=initMap">
+</script>
 
+</body>
 </html>
 ```
+
+## Important
+
+Your Blynk GPS datastream format must remain:
+
+```text
+LONGITUDE , LATITUDE
+```
+
+Example live test coordinate:
+
+```text
+76.278000 , 9.981500
+```
+
+Use these virtual pins:
+
+* V5 → GPS Location
+* V10 → Emergency Button
+* V2/V3/V4 → Optional ESP32 pole relay control
+
+This version now supports:
+
+* ✅ Google Maps API
+* ✅ Live Blynk GPS tracking
+* ✅ Dynamic ambulance movement
+* ✅ Real-time siren activation
+* ✅ Route path drawing
+* ✅ Kochi Menaka → Marine Drive → High Court corridor
+* ✅ Automatic distance calculation
