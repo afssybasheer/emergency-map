@@ -1,396 +1,474 @@
+```html id="7pq5xg"
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Emergency Corridor System — Live Map</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap"/>
+<title>Emergency Corridor System</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 
-*{
+body{
   margin:0;
-  padding:0;
-  box-sizing:border-box;
-}
-
-:root{
-  --red:#ff2d2d;
-  --blue:#1e90ff;
-  --green:#00e676;
-  --orange:#ff9100;
-  --dark:#0a0e1a;
-  --card:rgba(255,255,255,0.04);
-  --border:rgba(255,255,255,0.08);
-  --mono:'Share Tech Mono', monospace;
-  --sans:'Rajdhani', sans-serif;
-}
-
-html,body{
-  height:100%;
-  background:var(--dark);
-  color:#fff;
-  font-family:var(--sans);
-  overflow:hidden;
-}
-
-#header{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  height:52px;
-  z-index:2000;
-  background:rgba(10,14,26,0.96);
-  border-bottom:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 16px;
-}
-
-.logo{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-weight:700;
-  letter-spacing:1px;
-}
-
-.pulse-dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background:var(--green);
-}
-
-#emergencyBadge{
-  font-family:var(--mono);
-  font-size:11px;
-  padding:4px 14px;
-  border-radius:4px;
-  background:rgba(255,45,45,0.12);
-  border:1px solid rgba(255,45,45,0.3);
-  color:var(--red);
+  font-family:Arial;
+  background:#0a0e1a;
+  color:white;
 }
 
 #map{
-  position:fixed;
-  top:52px;
-  left:0;
-  right:280px;
-  bottom:0;
-}
-
-.leaflet-tile{
-  filter:brightness(0.85) saturate(0.7) hue-rotate(180deg) invert(1);
+  height:100vh;
+  width:calc(100% - 300px);
 }
 
 #sidebar{
+
   position:fixed;
-  top:52px;
+  top:0;
   right:0;
-  bottom:0;
-  width:280px;
-  background:rgba(10,14,26,0.97);
-  border-left:1px solid var(--border);
-  overflow-y:auto;
-  padding:12px;
-}
-
-.section-title{
-  font-family:var(--mono);
-  font-size:10px;
-  letter-spacing:2px;
-  color:rgba(255,255,255,0.3);
-  margin-bottom:8px;
-}
-
-.ambu-card,
-.pole-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:12px;
-  margin-bottom:10px;
-}
-
-.pole-card.siren-on{
-  border-color:var(--orange);
-  background:rgba(255,145,0,0.08);
-}
-
-.pole-header{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:8px;
-}
-
-.siren-badge{
-  font-size:10px;
-  color:#aaa;
-}
-
-.siren-badge.on{
-  color:var(--orange);
-}
-
-.stat-row{
-  display:flex;
-  justify-content:space-between;
-  margin:8px 0;
-  font-size:12px;
-}
-
-.dist-bar-wrap{
-  margin-top:8px;
-  height:4px;
-  background:#222;
-  border-radius:2px;
-  overflow:hidden;
-}
-
-.dist-bar{
+  width:300px;
   height:100%;
-  width:0%;
-  background:var(--blue);
+  background:#111827;
+  padding:15px;
+  overflow:auto;
+
+}
+
+.card{
+
+  background:#1f2937;
+  padding:12px;
+  margin-bottom:12px;
+  border-radius:10px;
+
+}
+
+.title{
+
+  font-size:13px;
+  color:#9ca3af;
+  margin-bottom:10px;
+
+}
+
+.active{
+
+  color:#ff9100;
+  font-weight:bold;
+
+}
+
+.silent{
+
+  color:#9ca3af;
+
 }
 
 </style>
+
 </head>
 
 <body>
-
-<div id="header">
-  <div class="logo">
-    <div class="pulse-dot"></div>
-    EMERGENCY CORRIDOR SYSTEM
-  </div>
-
-  <div id="emergencyBadge">
-    🚨 EMERGENCY ACTIVE
-  </div>
-</div>
 
 <div id="map"></div>
 
 <div id="sidebar">
 
-  <div class="section-title">AMBULANCE</div>
+<div class="card">
 
-  <div class="ambu-card">
-    <div>🚑 LIVE LOCATION</div>
-    <br>
+<div class="title">🚑 AMBULANCE</div>
 
-    LAT :
-    <span id="aLat">--</span>
-    <br><br>
+LAT :
+<span id="lat">--</span>
 
-    LNG :
-    <span id="aLng">--</span>
-    <br><br>
+<br><br>
 
-    SPEED :
-    <span id="aSpeed">40</span> km/h
-  </div>
+LNG :
+<span id="lng">--</span>
 
-  <div class="section-title">POLE STATUS</div>
+<br><br>
 
-  <div class="pole-card siren-on" id="pCard1">
-    <div class="pole-header">
-      <div>📍 Pole 1</div>
-      <div class="siren-badge on">🔊 ON</div>
-    </div>
-
-    Distance:
-    <span id="dist1">85</span> m
-
-    <div class="dist-bar-wrap">
-      <div class="dist-bar" id="bar1" style="width:85%; background:#ff9100;"></div>
-    </div>
-  </div>
-
-  <div class="pole-card siren-on" id="pCard2">
-    <div class="pole-header">
-      <div>📍 Pole 2</div>
-      <div class="siren-badge on">🔊 ON</div>
-    </div>
-
-    Distance:
-    <span id="dist2">150</span> m
-
-    <div class="dist-bar-wrap">
-      <div class="dist-bar" id="bar2" style="width:60%; background:#ff9100;"></div>
-    </div>
-  </div>
-
-  <div class="pole-card" id="pCard3">
-    <div class="pole-header">
-      <div>📍 Pole 3</div>
-      <div class="siren-badge">SILENT</div>
-    </div>
-
-    Distance:
-    <span id="dist3">420</span> m
-
-    <div class="dist-bar-wrap">
-      <div class="dist-bar" id="bar3" style="width:20%;"></div>
-    </div>
-  </div>
-
-  <div class="section-title">SYSTEM INFO</div>
-
-  <div class="ambu-card">
-
-    <div class="stat-row">
-      <span>Trigger Radius</span>
-      <span>300 m</span>
-    </div>
-
-    <div class="stat-row">
-      <span>Active Sirens</span>
-      <span>2 / 3</span>
-    </div>
-
-    <div class="stat-row">
-      <span>Emergency</span>
-      <span style="color:red;">ACTIVE</span>
-    </div>
-
-  </div>
+STATUS :
+<span id="status">STANDBY</span>
 
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div class="card">
+
+<div class="title">📍 POLE 1 — MENAKA</div>
+
+Distance :
+<span id="d1">--</span> m
+
+<br><br>
+
+SIREN :
+<span id="s1" class="silent">SILENT</span>
+
+</div>
+
+<div class="card">
+
+<div class="title">📍 POLE 2 — MARINE DRIVE</div>
+
+Distance :
+<span id="d2">--</span> m
+
+<br><br>
+
+SIREN :
+<span id="s2" class="silent">SILENT</span>
+
+</div>
+
+<div class="card">
+
+<div class="title">📍 POLE 3 — HIGH COURT</div>
+
+Distance :
+<span id="d3">--</span> m
+
+<br><br>
+
+SIREN :
+<span id="s3" class="silent">SILENT</span>
+
+</div>
+
+</div>
 
 <script>
 
-// MAP CENTER
-const map = L.map('map',{
-  center:[9.982500,76.279000],
-  zoom:15
-});
+// ======================================================
+// BLYNK CONFIG
+// ======================================================
 
-// TILE LAYER
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-  attribution:'© OpenStreetMap contributors'
-}).addTo(map);
+const BLYNK_TOKEN =
+"oXfBxr0og5eToyPAsXhBoGhdsqmBePbR";
 
-// POLES
+const SERVER =
+"https://blynk.cloud/external/api";
+
+// ======================================================
+// POLE LOCATIONS
+// ======================================================
+
 const POLES = [
 
 {
-  id:1,
-  name:"Pole 1 — Menaka",
-  lat:9.981700,
-  lng:76.276500
+id:1,
+name:"Menaka",
+lat:9.981700,
+lng:76.276500
 },
 
 {
-  id:2,
-  name:"Pole 2 — Marine Drive",
-  lat:9.978900,
-  lng:76.280800
+id:2,
+name:"Marine Drive",
+lat:9.978900,
+lng:76.280800
 },
 
 {
-  id:3,
-  name:"Pole 3 — High Court",
-  lat:9.986400,
-  lng:76.281900
+id:3,
+name:"High Court",
+lat:9.986400,
+lng:76.281900
 }
 
 ];
 
-// CREATE POLE MARKERS
-POLES.forEach((pole,index)=>{
+// ======================================================
+// MAP
+// ======================================================
 
-  // MARKER
-  const marker = L.marker([pole.lat,pole.lng])
-  .addTo(map)
-  .bindPopup(pole.name);
+const map = L.map('map').setView(
+[9.982500,76.279000],
+15
+);
 
-  // RADIUS CIRCLE
-  L.circle([pole.lat,pole.lng],{
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+attribution:'© OpenStreetMap'
+}
+).addTo(map);
 
-    radius:300,
-    color:index < 2 ? '#ff9100' : '#1e90ff',
-    fillColor:index < 2 ? '#ff9100' : '#1e90ff',
-    fillOpacity:0.15
+// ======================================================
+// POLE MARKERS
+// ======================================================
 
-  }).addTo(map);
+const poleMarkers = [];
+
+POLES.forEach((pole)=>{
+
+const marker = L.marker(
+[pole.lat,pole.lng]
+)
+.addTo(map)
+.bindPopup(pole.name);
+
+poleMarkers.push(marker);
+
+// RADIUS
+
+L.circle(
+[pole.lat,pole.lng],
+{
+
+radius:300,
+color:'#1e90ff',
+fillColor:'#1e90ff',
+fillOpacity:0.1
+
+}
+).addTo(map);
 
 });
 
-// AMBULANCE LOCATION
-const ambulanceLat = 9.981500;
-const ambulanceLng = 76.278000;
-
-// UPDATE SIDEBAR
-document.getElementById('aLat').innerHTML =
-ambulanceLat.toFixed(6);
-
-document.getElementById('aLng').innerHTML =
-ambulanceLng.toFixed(6);
-
+// ======================================================
 // AMBULANCE MARKER
+// ======================================================
+
 const ambulanceIcon = L.divIcon({
 
-  html:`
-  <div style="
-    background:red;
-    width:22px;
-    height:22px;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    border:2px solid white;
-    font-size:12px;
-    box-shadow:0 0 15px red;
-  ">
-  🚑
-  </div>
-  `,
+html:`
+<div style="
+background:red;
+width:22px;
+height:22px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+border:2px solid white;
+font-size:12px;
+box-shadow:0 0 15px red;
+">
+🚑
+</div>
+`,
 
-  className:'',
-  iconSize:[22,22]
+className:'',
+iconSize:[22,22]
 
 });
 
-// ADD AMBULANCE
-const ambulanceMarker = L.marker(
-[ambulanceLat,ambulanceLng],
-{
-  icon:ambulanceIcon
-})
-.addTo(map)
-.bindPopup("🚑 Ambulance");
-
-// PATH
-const route = [
-
+let ambulanceMarker = L.marker(
 [9.981500,76.278000],
-[9.980500,76.279500],
-[9.979500,76.280500],
-[9.978900,76.280800]
+{
+icon:ambulanceIcon
+}
+).addTo(map);
 
-];
+let path = [];
 
-// ROUTE LINE
-L.polyline(route,{
-
-  color:'red',
-  weight:4,
-  opacity:0.8
-
+let polyline = L.polyline(path,{
+color:'red',
+weight:4
 }).addTo(map);
+
+// ======================================================
+// DISTANCE FUNCTION
+// ======================================================
+
+function haversine(lat1,lon1,lat2,lon2){
+
+const R = 6371000;
+
+const toRad = x => x * Math.PI / 180;
+
+const dLat = toRad(lat2-lat1);
+const dLon = toRad(lon2-lon1);
+
+const a =
+
+Math.sin(dLat/2) * Math.sin(dLat/2)
+
++
+
+Math.cos(toRad(lat1)) *
+Math.cos(toRad(lat2)) *
+
+Math.sin(dLon/2) *
+Math.sin(dLon/2);
+
+const c = 2 * Math.atan2(
+Math.sqrt(a),
+Math.sqrt(1-a)
+);
+
+return R*c;
+
+}
+
+// ======================================================
+// UPDATE SIREN UI
+// ======================================================
+
+function updateSiren(id,on){
+
+const el = document.getElementById("s"+id);
+
+if(on){
+
+el.innerHTML = "🔊 ACTIVE";
+el.className = "active";
+
+}
+else{
+
+el.innerHTML = "SILENT";
+el.className = "silent";
+
+}
+
+}
+
+// ======================================================
+// FETCH LIVE BLYNK DATA
+// ======================================================
+
+async function fetchData(){
+
+try{
+
+// LOCATION
+
+const rLoc = await fetch(
+
+`${SERVER}/get?token=${BLYNK_TOKEN}&pin=V5`
+
+);
+
+const loc = await rLoc.json();
+
+// EMERGENCY BUTTON
+
+const rEmergency = await fetch(
+
+`${SERVER}/get?token=${BLYNK_TOKEN}&pin=V10`
+
+);
+
+const emergency = await rEmergency.json();
+
+const emergencyOn =
+parseInt(emergency[0]) === 1;
+
+// STATUS
+
+document.getElementById("status").innerHTML =
+
+emergencyOn
+?
+"🚨 ACTIVE"
+:
+"STANDBY";
+
+// ======================================================
+// GPS
+// ======================================================
+
+// BLYNK FORMAT:
+// LONGITUDE , LATITUDE
+
+const lng = parseFloat(loc[0]);
+const lat = parseFloat(loc[1]);
+
+if(
+!isNaN(lat)
+&&
+!isNaN(lng)
+){
+
+// UPDATE UI
+
+document.getElementById("lat").innerHTML =
+lat.toFixed(6);
+
+document.getElementById("lng").innerHTML =
+lng.toFixed(6);
+
+// MOVE AMBULANCE
+
+ambulanceMarker.setLatLng([lat,lng]);
+
+map.panTo([lat,lng]);
+
+// ROUTE PATH
+
+path.push([lat,lng]);
+
+polyline.setLatLngs(path);
+
+// ======================================================
+// DISTANCE CHECK
+// ======================================================
+
+POLES.forEach((pole,index)=>{
+
+const dist = haversine(
+
+lat,
+lng,
+pole.lat,
+pole.lng
+
+);
+
+document.getElementById(
+
+"d"+(index+1)
+
+).innerHTML =
+
+Math.round(dist);
+
+// SIREN AUTO ACTIVATION
+
+if(
+dist <= 300
+&&
+emergencyOn
+){
+
+updateSiren(index+1,true);
+
+}
+else{
+
+updateSiren(index+1,false);
+
+}
+
+});
+
+}
+
+}
+catch(err){
+console.log(err);
+}
+}
+// ======================================================
+// LIVE UPDATE
+// ======================================================
+
+fetchData();
+
+setInterval(fetchData,2000);
 
 </script>
 
 </body>
+
 </html>
+```
